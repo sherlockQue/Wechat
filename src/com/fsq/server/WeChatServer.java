@@ -1,5 +1,6 @@
 package com.fsq.server;
 
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -9,21 +10,28 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * @author fsq
- * @date 2020/01/15
- * 服务器主程序
+ * @date 2020/01/15 服务器主程序
  */
 public class WeChatServer {
 
   private static final int BUF_SIZE = 1024;
   private static final int PORT = 8888;
+  /**
+   * 用来判断split后数组大小，防止NPE
+   */
+  private static final int ARRAYS_SIZE = 3;
+  private static Map<String, Object> user = new HashMap<>();
 
   private Selector selector;
   private ServerSocketChannel ssc;
+
 
   public WeChatServer() {
     try {
@@ -84,6 +92,8 @@ public class WeChatServer {
     SocketChannel sc = ssc.accept();
     sc.configureBlocking(false);
     sc.register(selector, SelectionKey.OP_READ);
+
+
   }
 
   private void handleRead(SelectionKey key) {
@@ -93,12 +103,11 @@ public class WeChatServer {
 
       ByteBuffer buf = ByteBuffer.allocate(BUF_SIZE);
       StringBuffer sb = new StringBuffer();
-
       int bytesRead = sc.read(buf);
-      if(bytesRead == -1){
+      // 防止无限抛异常
+      if (bytesRead == -1) {
         throw new IOException();
       }
-
       while (bytesRead > 0) {
         buf.flip();
         sb.append(Charset.forName("UTF-8").decode(buf));
@@ -106,15 +115,22 @@ public class WeChatServer {
         bytesRead = sc.read(buf);
       }
 
+      // 保存客户端名字！！
+      if (sb.toString().indexOf("sendName") >= 0) {
+        user.put(sb.toString().substring(8), sc);
+        return;
+      }
 
+      // 如果是群聊，广播信息
       if (sb.length() > 0) {
         broadCast(sc, sb.toString());
         System.out.println(sb.toString());
+
       }
-    }catch (IOException e) {
+    } catch (IOException e) {
       try {
         sc.close();
-      }catch (IOException e1){
+      } catch (IOException e1) {
 
       }
 
@@ -123,29 +139,57 @@ public class WeChatServer {
 
   }
 
-  private void broadCast( SocketChannel sourceChannel, String request) {
+  private void broadCast(SocketChannel sourceChannel, String request) {
 
     Set<SelectionKey> selectionKeySet = selector.keys();
+    //  man-send-woman-aaaaaa
+    boolean flag = request.contains("-send-");
+    if (flag) {
+      String[] context = request.split("-");
+      if (context.length >= ARRAYS_SIZE) {
+        String sendName = context[0];
+        String receiveName = context[2];
+        Object reChannel = user.get(receiveName);
+        if (reChannel != null && reChannel instanceof SocketChannel) {
+          try {
+            if (context[3] == null) {
+              context[3] = " ";
+            }
+            if (sendName.equals(receiveName)) {
+              ((SocketChannel) reChannel).write(Charset.forName("UTF-8").encode("不能私聊自己."));
+            }
+            String words = "(私聊):" + sendName + "对你说: " + context[3];
+            ((SocketChannel) reChannel).write(Charset.forName("UTF-8").encode(words));
+          } catch (IOException e) {
+            e.printStackTrace();
 
-    /**
-     * 循环向所有channel广播信息
-     */
-    selectionKeySet.forEach(selectionKey -> {
-      Channel targetChannel = selectionKey.channel();
-
-      // 剔除发消息的客户端
-      if (targetChannel instanceof SocketChannel
-          && targetChannel != sourceChannel) {
-        try {
-          // 将信息发送到targetChannel客户端
-          ((SocketChannel) targetChannel).write(Charset.forName("UTF-8").encode(request));
-
-        } catch (IOException e) {
-          System.out.println("未知错误2");
-          e.printStackTrace();
+          }
         }
       }
-    });
+    } else {
+
+      /**
+       * 循环向所有channel广播信息
+       */
+      String con = request.replaceFirst("-", ":");
+
+      selectionKeySet.forEach(selectionKey -> {
+        Channel targetChannel = selectionKey.channel();
+
+        // 剔除发消息的客户端
+        if (targetChannel instanceof SocketChannel
+            && targetChannel != sourceChannel) {
+          try {
+            // 将信息发送到targetChannel客户端
+            ((SocketChannel) targetChannel).write(Charset.forName("UTF-8").encode(con));
+
+          } catch (IOException e) {
+            System.out.println("未知错误2");
+            e.printStackTrace();
+          }
+        }
+      });
+    }
   }
 
 

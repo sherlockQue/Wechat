@@ -1,5 +1,4 @@
 package com.fsq.util;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -7,9 +6,10 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 
 /**
+ * @author fsq
+ * @date 2020-1-16
+ * 按名字为唯一id，保存自己的聊天记录文件 name.txt
  *
- * 保存聊天记录文件
- * 各自保存自己的
  */
 public class SaveRecords {
 
@@ -17,6 +17,10 @@ public class SaveRecords {
   private String name;
   private File file ;
 
+  /**
+   * 创建文件路径和文件夹
+   * @param name 唯一标识
+   */
   public SaveRecords(String name) {
     this.name = name;
     dir = dir + name + ".txt";
@@ -33,7 +37,7 @@ public class SaveRecords {
 
   }
 
-  public void WriteFile(String text) throws IOException{
+  public void writeFile(String text) throws IOException{
 
     try {
       //FileOutputStream in= new FileOutputStream(file);
@@ -57,6 +61,7 @@ public class SaveRecords {
 
 
   }
+
 
 
 

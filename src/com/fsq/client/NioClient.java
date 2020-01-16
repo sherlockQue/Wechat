@@ -14,8 +14,8 @@ import java.nio.charset.Charset;
 import java.util.Iterator;
 
 /**
- * 客户端类
- * 启动类在ClientA，ClientB
+ * 客户端类 启动类在ClientA，ClientB
+ *
  * @author fsq
  * @date 2020/01/15
  */
@@ -31,7 +31,8 @@ public class NioClient {
     this.name = name;
     //初始化参数
     init();
-    System.out.println("启动成功，你的名字："+this.name+ "  输入 ”quit“ 退出");
+    System.out.println("启动成功，你的名字：" + this.name
+        + "  输入 ”quit“ 退出， 默认群聊，私聊请按照格式： ”send-name-XXXX(内容)“， 例：私聊 Jerry， send-Jerry-hello world!");
   }
 
   private void init() {
@@ -41,16 +42,20 @@ public class NioClient {
       sc = SocketChannel.open(new InetSocketAddress("127.0.0.1", PORT));
       sc.configureBlocking(false);
       sc.register(selector, SelectionKey.OP_READ);
+      sendName();
     } catch (IOException e) {
       System.out.println("初始失败");
     }
+
+
   }
 
   public void start() {
 
     try {
+
       //启动一个线程监听服务器消息
-      RunClient run = new RunClient(selector,saveRecords);
+      RunClient run = new RunClient(selector, saveRecords);
       new Thread(run).start();
       //创建记录类
 
@@ -69,14 +74,35 @@ public class NioClient {
         }
 
         if (request != null && request.length() > 0) {
-          sc.write(Charset.forName("utf-8").encode(name + " : " + request));
-          String word = "我说: " + request;
-          System.out.println(word);
-          saveRecords.WriteFile(word+"\n");
+
+          String sendText = name + "-" + request;
+
+          sc.write(Charset.forName("utf-8").encode(sendText));
+          //  me-send-she-aaaaaa
+
+          String words = "我说: " + request;
+
+          if (sendText.contains("-send-")) {
+            String[] context = sendText.split("-");
+            words = "（私聊） 我对" + context[2] + "说: " + context[3];
+          }
+
+          System.out.println(words);
+          saveRecords.writeFile(words + "\n");
         }
       }
     } catch (IOException e) {
       System.out.println("已退出");
+    }
+
+  }
+
+  private void sendName() {
+
+    try {
+      sc.write(Charset.forName("utf-8").encode("sendName" + name));
+    } catch (IOException e) {
+      System.out.println("初始姓名失败");
     }
 
   }
@@ -93,7 +119,7 @@ class RunClient implements Runnable {
   private static final int BUF_SIZE = 1024;
   public boolean flag = true;
 
-  public RunClient(Selector selector,SaveRecords saveRecords) {
+  public RunClient(Selector selector, SaveRecords saveRecords) {
     this.selector = selector;
     this.saveRecords = saveRecords;
   }
@@ -141,7 +167,7 @@ class RunClient implements Runnable {
     }
     // sc.close();
     System.out.println(sb.toString());
-    saveRecords.WriteFile(sb.toString()+"\n");
+    saveRecords.writeFile(sb.toString() + "\n");
   }
 
 }

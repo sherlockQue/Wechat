@@ -1,18 +1,17 @@
 package com.fsq.client;
 
+
 import java.io.IOException;
 
 /**
  * @author fsq
- * @date 2020/01/15
- * 启动客户端一
+ * @date 2020/01/16
+ * 启动客户端三
  */
-public class ClientA {
-
-
+public class ClientC {
   public static void main(String[] args) throws IOException {
 
-    new NioClient("tom").start();
+    new NioClient("doinb").start();
 
   }
 

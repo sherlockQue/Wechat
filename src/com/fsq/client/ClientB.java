@@ -11,7 +11,7 @@ public class ClientB {
 
   public static void main(String[] args) throws IOException {
 
-    new NioClient("林伟翔").start();
+    new NioClient("lisa").start();
 
   }
 
